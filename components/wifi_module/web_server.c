@@ -1,6 +1,7 @@
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "wifi_module.h"
+#include "utilities.h"
 #include <ctype.h>
 
 #include <esp_http_server.h>
@@ -69,7 +70,7 @@ esp_err_t save_handler(httpd_req_t *req) {
 
             ESP_LOGI(TAG, "Decoded SSID: %s, PASS: %s", decoded_ssid, decoded_pass);
             
-            stop_provisioning_timer();
+            stop_provisioning_manager();
             
             // Save the DECODED versions of ssid and password
             ESP_LOGI(TAG, "Saving credentials to NVS...");

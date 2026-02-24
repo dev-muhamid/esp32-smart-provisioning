@@ -13,11 +13,13 @@
 #include "nimble/nimble_port.h"
 #include "ble_provisioning.h"
 #include "wifi_module.h"
+#include "utilities.h"
 
 static const char *TAG = "BLE_VISION";
 static char ble_ssid[32];
 static char ble_pass[64];
 static uint8_t ble_addr_type;
+static bool ble_shutdown_requested = false;
 
 static void ble_app_advertise(void);
 static void nimble_host_task(void *param);
@@ -77,7 +79,8 @@ static int gatt_svr_access_wifi(uint16_t conn_handle, uint16_t attr_handle, stru
             if (strlen(ble_ssid) > 0 && strlen(ble_pass) > 0) {
                 ESP_LOGI(TAG, "Saving credentials received via BLE...");
                 save_wifi_credentials(ble_ssid, ble_pass); //save wifi_credentials to NVS
-                stop_provisioning_timer();
+                stop_provisioning_manager();
+                stop_ble_provisioning();
                 vTaskDelay(pdMS_TO_TICKS(2000));
                 esp_restart();
             }
@@ -121,11 +124,14 @@ static void ble_app_on_sync(void) {
         ESP_LOGE(TAG, "Failed to infer BLE address type: %d", rc);
         return;
     }
-    ble_app_advertise();
+    if (!ble_shutdown_requested) {
+        ble_app_advertise();
+    }
 }
 
 
 void start_ble_provisioning(void) {
+    ble_shutdown_requested = false;
     ESP_ERROR_CHECK(nimble_port_init());
 
     // Set the sync callback
@@ -165,7 +171,9 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg) {
     switch (event->type) {
     case BLE_GAP_EVENT_DISCONNECT:
     case BLE_GAP_EVENT_ADV_COMPLETE:
-        ble_app_advertise();
+        if (!ble_shutdown_requested) {
+            ble_app_advertise();
+        }
         return 0;
     default:
         return 0;

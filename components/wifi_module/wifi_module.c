@@ -3,6 +3,7 @@
 #include "wifi_module.h"
 #include "ble_provisioning.h"
 #include "web_server.h"
+#include "utilities.h"
 #include "esp_wifi.h"
 #include "esp_log.h"
 #include "esp_event.h"
@@ -13,12 +14,10 @@
 #include <ctype.h>
 
 static const char *TAG = "WIFI_CONN";
-static TimerHandle_t ap_timeout_timer = NULL;
 static bool ble_provisioning_started = false;
+static bool stop_component_registered = false;
 
 static void stop_softap_and_server(void);
-static void ap_timer_callback(TimerHandle_t xTimer);
-static void start_ap_timeout(int minutes);
 
 // store SSID and PASSWORDS to NVS
 esp_err_t save_wifi_credentials(const char* ssid, const char* password) {
@@ -59,37 +58,16 @@ static void stop_softap_and_server(void) {
     // For simplicity here, we stop all instances
     
     // 2. Turn off the AP part of the radio
+    stop_ble_provisioning();
     esp_wifi_set_mode(WIFI_MODE_NULL); 
     esp_wifi_stop();
     
     ESP_LOGI("WIFI_MOD", "Radio disabled to save power.");
 }
 
-// Callback function when timer expires
-static void ap_timer_callback(TimerHandle_t xTimer) {
-    stop_softap_and_server();
-}
-
-static void start_ap_timeout(int minutes) {
-    ESP_LOGI("WIFI_MODE", "Config mode will timeout in %d %s,", minutes, minutes == 1 ? "Minute" : "Minutes");
-    
-    ap_timeout_timer = xTimerCreate("ap_timer", 
-                                    pdMS_TO_TICKS(minutes * 60 * 1000), 
-                                    pdFALSE, // Don't auto-reload
-                                    (void*)0, 
-                                    ap_timer_callback);
-    
-    if (ap_timeout_timer != NULL && xTimerStart(ap_timeout_timer, 0) != pdPASS)
-    {
-        ESP_LOGE("WIFI_MODE", "Failed to start AP timer");
-    }
-}
-
 void stop_provisioning_timer(void) {
-    if (ap_timeout_timer != NULL) {
-        xTimerStop(ap_timeout_timer, 0);
-        ESP_LOGI("WIFI_MODE", "Provisioning timer stopped.");
-    }
+    stop_provisioning_manager();
+    ESP_LOGI("WIFI_MODE", "Provisioning timer stopped.");
 }
 
 // Event handler to catch WiFi events
@@ -164,8 +142,13 @@ void wifi_init_softap(void) {
         ESP_LOGI("WIFI_MODE", "BLE provisioning advertising started.");
     }
 
+    if (!stop_component_registered) {
+        register_stop_component(stop_softap_and_server);
+        stop_component_registered = true;
+    }
+
     //Start a 5-minute countdown
-    start_ap_timeout(1);
+    start_provisioning_manager(1);
 }
 
 void wifi_module_init(void) {
