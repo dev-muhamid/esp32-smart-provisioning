@@ -1,0 +1,22 @@
+# --- ESP-IDF Specific ---
+# Build output (can be several hundred MBs, no need for Git)
+build/
+
+# Local configuration files (contains local paths, shouldn't be shared)
+sdkconfig.old
+sdkconfig.ci
+managed_components/
+dependencies.lock
+
+# --- Editor Specific ---
+# VS Code settings and local workspace data
+.vscode/
+.history/
+.vscode/ipch/
+.vscode/project.xcworkspace/
+
+# --- System Specific ---
+.DS_Store
+Thumbs.db
+*.swp
+*~
