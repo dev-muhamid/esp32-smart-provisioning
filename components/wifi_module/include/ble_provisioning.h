@@ -5,5 +5,6 @@
 #define GATT_WIFI_PASS_UUID 0xFF02
 
 void start_ble_provisioning(void);
+void stop_ble_provisioning(void);
 
 #endif

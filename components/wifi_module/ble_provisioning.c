@@ -148,6 +148,17 @@ void start_ble_provisioning(void) {
     nimble_port_freertos_init(nimble_host_task);
 }
 
+void stop_ble_provisioning(void) {
+    ble_shutdown_requested = true;
+
+    int rc = ble_gap_adv_stop();
+    if (rc != 0) {
+        ESP_LOGW(TAG, "BLE advertising stop returned: %d", rc);
+    } else {
+        ESP_LOGI(TAG, "BLE advertising stopped.");
+    }
+}
+
 static int ble_gap_event(struct ble_gap_event *event, void *arg) {
     (void)arg;
 
