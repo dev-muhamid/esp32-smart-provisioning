@@ -149,7 +149,10 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 
 void wifi_init_softap(void) {
     ESP_LOGI("WIFI_MODE", "Initializing SoftAP...");
-    esp_netif_create_default_wifi_ap();
+    if (!ap_netif_created) {
+        esp_netif_create_default_wifi_ap();
+        ap_netif_created = true;
+    }
 
     wifi_config_t wifi_config = {
         .ap = {
@@ -167,24 +170,24 @@ void wifi_init_softap(void) {
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_APSTA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
-    ESP_ERROR_CHECK(esp_wifi_start());
+
+    if (!wifi_driver_started) {
+        ESP_ERROR_CHECK(esp_wifi_start());
+        wifi_driver_started = true;
+    }
 
     ESP_LOGI("WIFI_MODE", "SoftAP Started. SSID: %s", ESP_WIFI_AP_SSID);
 
-    start_webserver();
-    if (!ble_provisioning_started) {
-        start_ble_provisioning();
-        ble_provisioning_started = true;
-        ESP_LOGI("WIFI_MODE", "BLE provisioning advertising started.");
+    if (!ap_server_started) {
+        start_webserver();
+        ap_server_started = true;
     }
-
+    
     if (!stop_component_registered) {
         register_stop_component(stop_softap_and_server);
         stop_component_registered = true;
     }
 
-    //Start a 5-minute countdown
-    start_provisioning_manager(1);
 }
 
 void wifi_module_init(void) {
@@ -237,6 +240,7 @@ void wifi_module_init(void) {
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
         ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
         ESP_ERROR_CHECK(esp_wifi_start());
+        wifi_driver_started = true;
         ESP_LOGI(TAG, "WiFi Started");
         return; 
     } else {
