@@ -27,9 +27,8 @@ void register_stop_component(stop_action_cb_t cb) {
 
 void start_provisioning_manager(int timeout_min) {
     if (global_prov_timer != NULL) {
-        xTimerStop(global_prov_timer, 0);
-        xTimerDelete(global_prov_timer, 0);
-        global_prov_timer = NULL;
+        ESP_LOGI(TAG, "Provisioning timer already active; keeping existing timeout window");
+        return;
     }
 
     global_prov_timer = xTimerCreate("ProvTimer", pdMS_TO_TICKS(timeout_min * 60000), pdFALSE, NULL, global_timer_callback);
