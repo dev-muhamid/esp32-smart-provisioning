@@ -15,6 +15,9 @@
 
 static const char *TAG = "WIFI_CONN";
 static bool ble_provisioning_started = false;
+static bool ap_server_started = false;
+static bool ap_netif_created = false;
+static bool wifi_driver_started = false;
 static bool stop_component_registered = false;
 
 static void stop_softap_and_server(void);
@@ -59,9 +62,16 @@ static void stop_softap_and_server(void) {
     // For simplicity here, we stop all instances
     
     // 2. Turn off the AP part of the radio
-    stop_ble_provisioning();
-    esp_wifi_set_mode(WIFI_MODE_NULL); 
-    esp_wifi_stop();
+    stop_provisioning_manager();
+
+    if (ble_provisioning_started) {
+        stop_ble_provisioning();
+        ble_provisioning_started = false;
+    }
+
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_NULL));
+    ESP_ERROR_CHECK(esp_wifi_stop());
+    wifi_driver_started = false;
     
     ESP_LOGI("WIFI_MOD", "Radio disabled to save power.");
 }
@@ -106,6 +116,20 @@ static void event_handler(void* arg, esp_event_base_t event_base,
             ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
             ESP_LOGI(TAG, "Success! Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
 
+            stop_provisioning_manager();
+            s_retry_num = 0;
+
+            if (ble_provisioning_started) {
+                stop_ble_provisioning();
+                ble_provisioning_started = false;
+            }
+
+            wifi_mode_t wifi_mode;
+            ESP_ERROR_CHECK(esp_wifi_get_mode(&wifi_mode));
+            if (wifi_mode == WIFI_MODE_APSTA) {
+                ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+            }
+            
             struct addrinfo hints = {
                 .ai_family = AF_INET,
                 .ai_socktype = SOCK_STREAM,
