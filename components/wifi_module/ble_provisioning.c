@@ -81,7 +81,7 @@ static int gatt_svr_access_wifi(uint16_t conn_handle, uint16_t attr_handle, stru
                 save_wifi_credentials(ble_ssid, ble_pass); //save wifi_credentials to NVS
                 stop_provisioning_manager();
                 stop_ble_provisioning();
-                vTaskDelay(pdMS_TO_TICKS(2000));
+                vTaskDelay(pdMS_TO_TICKS(1000));
                 esp_restart();
             }
         }
@@ -156,7 +156,7 @@ void start_ble_provisioning(void) {
 
 void stop_ble_provisioning(void) {
     ble_shutdown_requested = true;
-
+    nimble_port_stop();
     int rc = ble_gap_adv_stop();
     if (rc != 0) {
         ESP_LOGW(TAG, "BLE advertising stop returned: %d", rc);

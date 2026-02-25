@@ -5,10 +5,6 @@
 #include "freertos/timers.h"
 #include "esp_err.h"
 
-
-// Define your credentials here or in menuconfig
-#define WIFI_SSID      "Elec_router-2.4Ghz"
-#define WIFI_PASS      "elec@1234"
 #define MAX_RETRY      5
 
 //Define access point credentials
