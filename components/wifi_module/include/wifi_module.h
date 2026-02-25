@@ -5,7 +5,7 @@
 #include "freertos/timers.h"
 #include "esp_err.h"
 
-#define MAX_RETRY      5
+#define MAX_WIFI_RETRY      5
 
 //Define access point credentials
 #define ESP_WIFI_AP_SSID      "ESP32_Config_Node"

@@ -18,6 +18,7 @@ static bool ble_provisioning_started = false;
 static bool stop_component_registered = false;
 
 static void stop_softap_and_server(void);
+static void start_provisioning_channels(int timeout_min);
 
 // store SSID and PASSWORDS to NVS
 esp_err_t save_wifi_credentials(const char* ssid, const char* password) {
@@ -70,6 +71,18 @@ void stop_provisioning_timer(void) {
     ESP_LOGI("WIFI_MODE", "Provisioning timer stopped.");
 }
 
+static void start_provisioning_channels(int timeout_min) {
+    wifi_init_softap();
+
+    if (!ble_provisioning_started) {
+        ESP_LOGI("WIFI_MODE", "Proceeding for BLE provisioning advertisement start...");
+        start_ble_provisioning();
+        ble_provisioning_started = true;
+    }
+
+    start_provisioning_manager(timeout_min);
+}
+
 // Event handler to catch WiFi events
 static void event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data) {
@@ -77,15 +90,14 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        if (s_retry_num < MAX_RETRY) {
+        if (s_retry_num < MAX_WIFI_RETRY) {
             esp_wifi_connect();
             s_retry_num++;
-            ESP_LOGI(TAG, "Router not found. Retrying... (%d/%d)", s_retry_num, MAX_RETRY);
+            ESP_LOGI(TAG, "Router not found. Retrying... (%d/%d)", s_retry_num, MAX_WIFI_RETRY);
         } else {
             ESP_LOGW(TAG, "Connection failed. Starting SoftAP or BLE for reconfiguration...");
-            // Switch to APSTA mode so we can still try to connect while the AP is active
-            wifi_init_softap(); 
-            s_retry_num = 0; // Reset counter so it doesn't loop infinitely
+            start_provisioning_channels(2);
+            s_retry_num = 0;
         }
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ESP_LOGI(TAG, "WiFi connected!");
@@ -205,7 +217,7 @@ void wifi_module_init(void) {
         return; 
     } else {
         //PATH B:: START SOFTAP FOR CONFIG
-        ESP_LOGI("WIFI_MODE", "No Credentials Found, Starting SoftAP for configuration...");
-        wifi_init_softap();
+        ESP_LOGI("WIFI_MODE", "No Credentials Found, Starting SoftAP and BLE for configuration...");
+        start_provisioning_channels(2);
     }
 }
